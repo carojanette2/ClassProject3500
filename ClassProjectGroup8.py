@@ -1,3 +1,6 @@
+#adding this comment to test something
+#Group 6: Matthew Quezada, Caroline Contreras, Avelina Olemedo, Christian Schmiedel
+
 import os
 import sys
 import argparse
