@@ -1,3 +1,5 @@
+#Group 6: Matthew Quezada, Caroline Contreras, Avelina Olemedo, Christian Schmiedel
+
 import os
 import sys
 import argparse
@@ -54,7 +56,7 @@ def clean_data(df, write_intermediate=False):
         # 3) Convert types exactly like notebook
         df['Date Rptd'] = df['Date Rptd'].apply(lambda x: datetime.strptime(x, '%m/%d/%Y %I:%M:%S %p'))
         df['DATE OCC']  = df['DATE OCC'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d'))
-        for col in ['AREA NAME','Crm Cd Desc','Mocodes','Vict Sex',
+        for col in ['AREA NAME','Crm Cd Desc','Vict Sex',
                     'Vict Descent','Premis Desc','Weapon Desc','Status','Status Desc']:
             if col in df.columns:
                 df[col] = df[col].astype('string')
@@ -89,10 +91,12 @@ def clean_data(df, write_intermediate=False):
 
         # 10) Drop any remaining NaNs
         df = df.dropna()
-
+        df = df.drop(df[df['Status'] == 'IC'].index)
+        df = df.drop(df[df['Status'] == 'CC'].index)
+        
         # 11) Dropping columns not used in this model
         columns_to_drop_not_used = ['Date Rptd', 'AREA NAME', 'Rpt Dist No', 'Part 1-2', 'Crm Cd Desc',
-                                    'Premis Desc', 'Weapon Desc', 'Status Desc']
+                                    'Premis Desc', 'Weapon Desc','Status', 'Mocodes', 'Status Desc']
         df.drop(columns=columns_to_drop_not_used, inplace=True)
 
         # 12) Feature engineering: cyclical time and date
@@ -120,7 +124,7 @@ def clean_data(df, write_intermediate=False):
         print(f"[ERROR] Unexpected error in cleaning: {e}")
         sys.exit(1)
 
-1
+
 def build_and_train(df):
     try:
         # Sample to reduce memory footprint
@@ -131,7 +135,7 @@ def build_and_train(df):
             'Vict Age','AREA','Crm Cd','Premis Cd','Weapon Used Cd',
             'Hour_sin','Hour_cos','DayOfWeek_sin','DayOfWeek_cos','Month_sin','Month_cos'
         ]
-        cat_feats = ['Mocodes','Vict Sex','Vict Descent']
+        cat_feats = ['Vict Sex','Vict Descent']
 
         # Remove outliers by IQR on raw numerics only
         raw_feats = ['Vict Age','AREA','Crm Cd','Premis Cd','Weapon Used Cd']
@@ -167,8 +171,11 @@ def build_and_train(df):
 
         # Build model
         model = Sequential([
-            Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
-            Dense(32, activation='relu'),
+            Dense(21, activation='relu', input_shape=(X_train.shape[1],)),
+            Dense(42, activation='relu'),
+            Dense(84, activation='relu'),  
+            Dense(84, activation='relu'),  
+            Dense(42, activation='relu'),                   
             Dense(1, activation='sigmoid')
         ])
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
@@ -203,7 +210,7 @@ def predict(model, encoder, scaler, df):
             'Vict Age','AREA','Crm Cd','Premis Cd','Weapon Used Cd',
             'Hour_sin','Hour_cos','DayOfWeek_sin','DayOfWeek_cos','Month_sin','Month_cos'
         ]
-        cat_feats = ['Mocodes','Vict Sex','Vict Descent']
+        cat_feats = ['Vict Sex','Vict Descent']
         X_cat = encoder.transform(df[cat_feats])
         X_num = scaler.transform(df[num_feats].values)
         X = hstack([X_cat, X_num])
@@ -226,59 +233,86 @@ def main():
     train_df = test_df = None
     last_y_test = last_preds = None
 
+    # The user must complete steps in order
+    steps = ["1", "2", "3", "4", "5"]
+    completedsteps = set()
+    currentstep = 0
+
+    def stepped(choice):
+        nonlocal currentstep
+        expected_choice = steps[currentstep]
+        if choice == expected_choice:
+            completedsteps.add(choice)
+            currentstep += 1
+            return True
+        else:
+            print(f"[ERROR] You must complete step ({expected_choice}) before choosing ({choice}).")
+            return False
+
     while True:
         print("\nMenu:\n(1) Load training data\n(2) Clean training data\n(3) Train NN\n(4) Load testing data\n(5) Generate Predictions and Print Accuracy\n(6) Quit")
         choice = input("Select an option: ")
 
-        if choice=='1':
+        if choice == '6':
+            print('Exiting.')
+            sys.exit(0)
+
+        if choice in steps:
+            if not stepped(choice):
+                continue
+
+        if choice == '1':
             path = args.train or input("Enter training file path: ")
             train_df = load_data(path)
 
-        elif choice=='2':
+        elif choice == '2':
             if train_df is None:
                 print("[ERROR] Load training data first.")
-                main()
+                continue
             else:
                 train_df = clean_data(train_df)
 
-        elif choice=='3':
+        elif choice == '3':
             if train_df is None:
                 print("[ERROR] No data to train on.")
-                main()
+                steps.remove(2)
+                continue
             else:
                 model, encoder, scaler, last_y_test, last_preds = build_and_train(train_df)
 
-        elif choice=='4':
+        elif choice == '4':
             if model is None:
-                print("Ensure data is trained")
+                print("[ERROR] Ensure data is trained before loading test data.")
+                continue
             else:
                 path = args.test or input("Enter testing file path: ")
                 test_df = load_data(path)
 
-        elif choice=='5':
+        elif choice == '5':
             if model is None or test_df is None:
                 print("[ERROR] Ensure model is trained and testing data is loaded.")
+                continue
             else:
                 test_df = clean_data(test_df)
                 preds = predict(model, encoder, scaler, test_df)
-                preds.to_csv("/Users/matthewquezada/Desktop/CS3500/predictionClassProject8.csv", index=False)
-                print("[INFO] Predictions saved to predictionClassProject1.csv")
-            if last_y_test is None or last_preds is None:
-                print("[ERROR] No predictions available to compute accuracy.")
-            else:
-                count = int((last_preds == last_y_test).sum())
-                pct = count / len(last_y_test) * 100
-                now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(f"[{now}]  {count} of correct predicted observations.")
-                print(f"[{now}]  {pct:.2f}% of correct predicted observations.")
+                try:
+                    preds.to_csv("C:/Users/caroj/OneDrive/Desktop/3500Project/predictionClassProject8.csv", index=False)
+                    print("[INFO] Predictions saved to predictionClassProject8.csv")
+                except Exception as e:
+                    print(f"[ERROR] Could not save file: {e}")
 
-        elif choice=='6':
-            print('Exiting.')
-            sys.exit(1)
-            break
+                if last_y_test is None or last_preds is None:
+                    print("[ERROR] No predictions available to compute accuracy.")
+                else:
+                    count = int((last_preds == last_y_test).sum())
+                    pct = count / len(last_y_test) * 100
+                    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    print(f"[{now}]  {count} of correct predicted observations.")
+                    print(f"[{now}]  {pct:.2f}% of correct predicted observations.")
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
+
 
 
 
