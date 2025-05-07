@@ -231,62 +231,85 @@ def main():
     train_df = test_df = None
     last_y_test = last_preds = None
 
+    # The user must complete steps in order
+    steps = ["1", "2", "3", "4", "5"]
+    completedsteps = set()
+    currentstep = 0
+
+    def stepped(choice):
+        nonlocal currentstep
+        expected_choice = steps[currentstep]
+        if choice == expected_choice:
+            completedsteps.add(choice)
+            currentstep += 1
+            return True
+        else:
+            print(f"[ERROR] You must complete step ({expected_choice}) before choosing ({choice}).")
+            return False
+
     while True:
         print("\nMenu:\n(1) Load training data\n(2) Clean training data\n(3) Train NN\n(4) Load testing data\n(5) Generate Predictions and Print Accuracy\n(6) Quit")
         choice = input("Select an option: ")
 
-        if choice=='1':
+        if choice == '6':
+            print('Exiting.')
+            sys.exit(0)
+
+        if choice in steps:
+            if not stepped(choice):
+                continue
+
+        if choice == '1':
             path = args.train or input("Enter training file path: ")
             train_df = load_data(path)
 
-        elif choice=='2':
+        elif choice == '2':
             if train_df is None:
                 print("[ERROR] Load training data first.")
-                main()
+                continue
             else:
                 train_df = clean_data(train_df)
 
-        elif choice=='3':
+        elif choice == '3':
             if train_df is None:
                 print("[ERROR] No data to train on.")
-                main()
+                continue
             else:
                 model, encoder, scaler, last_y_test, last_preds = build_and_train(train_df)
 
-        elif choice=='4':
+        elif choice == '4':
             if model is None:
-                print("Ensure data is trained")
+                print("[ERROR] Ensure data is trained before loading test data.")
+                continue
             else:
                 path = args.test or input("Enter testing file path: ")
                 test_df = load_data(path)
 
-        elif choice=='5':
+        elif choice == '5':
             if model is None or test_df is None:
                 print("[ERROR] Ensure model is trained and testing data is loaded.")
+                continue
             else:
                 test_df = clean_data(test_df)
                 preds = predict(model, encoder, scaler, test_df)
                 try:
                     preds.to_csv("C:/Users/caroj/OneDrive/Desktop/3500Project/predictionClassProject8.csv", index=False)
-                except:
-                    print("Could not use this path")
-                print("[INFO] Predictions saved to predictionClassProject1.csv")
-            if last_y_test is None or last_preds is None:
-                print("[ERROR] No predictions available to compute accuracy.")
-            else:
-                count = int((last_preds == last_y_test).sum())
-                pct = count / len(last_y_test) * 100
-                now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(f"[{now}]  {count} of correct predicted observations.")
-                print(f"[{now}]  {pct:.2f}% of correct predicted observations.")
+                    print("[INFO] Predictions saved to predictionClassProject8.csv")
+                except Exception as e:
+                    print(f"[ERROR] Could not save file: {e}")
 
-        elif choice=='6':
-            print('Exiting.')
-            sys.exit(1)
-            break
+                if last_y_test is None or last_preds is None:
+                    print("[ERROR] No predictions available to compute accuracy.")
+                else:
+                    count = int((last_preds == last_y_test).sum())
+                    pct = count / len(last_y_test) * 100
+                    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    print(f"[{now}]  {count} of correct predicted observations.")
+                    print(f"[{now}]  {pct:.2f}% of correct predicted observations.")
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
+
 
 
 
