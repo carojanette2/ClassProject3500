@@ -1,4 +1,3 @@
-#adding this comment to test something
 #Group 6: Matthew Quezada, Caroline Contreras, Avelina Olemedo, Christian Schmiedel
 
 import os
@@ -57,7 +56,7 @@ def clean_data(df, write_intermediate=False):
         # 3) Convert types exactly like notebook
         df['Date Rptd'] = df['Date Rptd'].apply(lambda x: datetime.strptime(x, '%m/%d/%Y %I:%M:%S %p'))
         df['DATE OCC']  = df['DATE OCC'].apply(lambda x: datetime.strptime(x, '%Y-%m-%d'))
-        for col in ['AREA NAME','Crm Cd Desc','Mocodes','Vict Sex',
+        for col in ['AREA NAME','Crm Cd Desc','Vict Sex',
                     'Vict Descent','Premis Desc','Weapon Desc','Status','Status Desc']:
             if col in df.columns:
                 df[col] = df[col].astype('string')
@@ -97,7 +96,7 @@ def clean_data(df, write_intermediate=False):
         
         # 11) Dropping columns not used in this model
         columns_to_drop_not_used = ['Date Rptd', 'AREA NAME', 'Rpt Dist No', 'Part 1-2', 'Crm Cd Desc',
-                                    'Premis Desc', 'Weapon Desc','Status', 'Status Desc']
+                                    'Premis Desc', 'Weapon Desc','Status', 'Mocodes', 'Status Desc']
         df.drop(columns=columns_to_drop_not_used, inplace=True)
 
         # 12) Feature engineering: cyclical time and date
@@ -125,7 +124,7 @@ def clean_data(df, write_intermediate=False):
         print(f"[ERROR] Unexpected error in cleaning: {e}")
         sys.exit(1)
 
-1
+
 def build_and_train(df):
     try:
         # Sample to reduce memory footprint
@@ -136,7 +135,7 @@ def build_and_train(df):
             'Vict Age','AREA','Crm Cd','Premis Cd','Weapon Used Cd',
             'Hour_sin','Hour_cos','DayOfWeek_sin','DayOfWeek_cos','Month_sin','Month_cos'
         ]
-        cat_feats = ['Mocodes','Vict Sex','Vict Descent']
+        cat_feats = ['Vict Sex','Vict Descent']
 
         # Remove outliers by IQR on raw numerics only
         raw_feats = ['Vict Age','AREA','Crm Cd','Premis Cd','Weapon Used Cd']
@@ -172,8 +171,11 @@ def build_and_train(df):
 
         # Build model
         model = Sequential([
-            Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
-            Dense(32, activation='relu'),
+            Dense(21, activation='relu', input_shape=(X_train.shape[1],)),
+            Dense(42, activation='relu'),
+            Dense(84, activation='relu'),  
+            Dense(84, activation='relu'),  
+            Dense(42, activation='relu'),                   
             Dense(1, activation='sigmoid')
         ])
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
@@ -208,7 +210,7 @@ def predict(model, encoder, scaler, df):
             'Vict Age','AREA','Crm Cd','Premis Cd','Weapon Used Cd',
             'Hour_sin','Hour_cos','DayOfWeek_sin','DayOfWeek_cos','Month_sin','Month_cos'
         ]
-        cat_feats = ['Mocodes','Vict Sex','Vict Descent']
+        cat_feats = ['Vict Sex','Vict Descent']
         X_cat = encoder.transform(df[cat_feats])
         X_num = scaler.transform(df[num_feats].values)
         X = hstack([X_cat, X_num])
@@ -273,6 +275,7 @@ def main():
         elif choice == '3':
             if train_df is None:
                 print("[ERROR] No data to train on.")
+                steps.remove(2)
                 continue
             else:
                 model, encoder, scaler, last_y_test, last_preds = build_and_train(train_df)
