@@ -94,6 +94,7 @@ def clean_data(df, write_intermediate=False):
         df = df.dropna()
         df = df.drop(df[df['Status'] == 'IC'].index)
         df = df.drop(df[df['Status'] == 'CC'].index)
+        
         # 11) Dropping columns not used in this model
         columns_to_drop_not_used = ['Date Rptd', 'AREA NAME', 'Rpt Dist No', 'Part 1-2', 'Crm Cd Desc',
                                     'Premis Desc', 'Weapon Desc','Status', 'Status Desc']
@@ -265,7 +266,10 @@ def main():
             else:
                 test_df = clean_data(test_df)
                 preds = predict(model, encoder, scaler, test_df)
-                preds.to_csv("/Users/matthewquezada/Desktop/CS3500/predictionClassProject8.csv", index=False)
+                try:
+                    preds.to_csv("C:/Users/caroj/OneDrive/Desktop/3500Project/predictionClassProject8.csv", index=False)
+                except:
+                    print("Could not use this path")
                 print("[INFO] Predictions saved to predictionClassProject1.csv")
             if last_y_test is None or last_preds is None:
                 print("[ERROR] No predictions available to compute accuracy.")
