@@ -95,8 +95,8 @@ def clean_data(df, write_intermediate=False):
         df = df.drop(df[df['Status'] == 'CC'].index)
         
         # 11) Dropping columns not used in this model
-        columns_to_drop_not_used = ['Date Rptd', 'AREA NAME', 'Rpt Dist No', 'Part 1-2', 'Crm Cd Desc',
-                                    'Premis Desc', 'Weapon Desc','Status', 'Mocodes', 'Status Desc']
+        columns_to_drop_not_used = ['Date Rptd', 'AREA NAME', 'Part 1-2', 'Crm Cd Desc',
+                                    'Premis Desc', 'Weapon Desc','Mocodes', 'Status Desc']
         df.drop(columns=columns_to_drop_not_used, inplace=True)
 
         # 12) Feature engineering: cyclical time and date
