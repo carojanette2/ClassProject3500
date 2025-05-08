@@ -257,7 +257,7 @@ def main():
             print('Exiting.')
             sys.exit(0)
 
-        if choice in steps:
+        if choice in steps and currentstep < len(steps):
             if not stepped(choice):
                 continue
 
